@@ -18,6 +18,19 @@ public class Tag {
     @OneToMany(targetEntity = Diary.class, mappedBy = "tag", cascade = CascadeType.ALL)
     private List<Diary> diaries;
 
+    @JsonIgnore
+    @OneToMany(targetEntity = Album.class, mappedBy = "tag", cascade = CascadeType.ALL)
+    private List<Album> albums;
+
+
+    public List<Album> getAlbums() {
+        return albums;
+    }
+
+    public void setAlbums(List<Album> albums) {
+        this.albums = albums;
+    }
+
     public Tag() {
     }
 
