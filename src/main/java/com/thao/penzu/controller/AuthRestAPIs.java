@@ -31,7 +31,7 @@ import java.util.Set;
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/auth")
-public class AuthRestAPI {
+public class AuthRestAPIs {
     @Autowired
     AuthenticationManager authenticationManager;
 

@@ -2,8 +2,11 @@ package com.thao.penzu.message.request;
 
 import org.springframework.web.multipart.MultipartFile;
 
-public class MultipartForm {
+public class MultiFileForm {
     private MultipartFile[] files;
+
+    public MultiFileForm() {
+    }
 
     public MultiFileForm(MultipartFile[] files) {
         this.files = files;

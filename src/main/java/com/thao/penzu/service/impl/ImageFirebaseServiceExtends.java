@@ -1,4 +1,8 @@
 package com.thao.penzu.service.impl;
 
-public class ImageFirebaseServiceExtends {
+import com.thao.penzu.service.FirebaseStorageService;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ImageFirebaseServiceExtends extends FirebaseStorageService {
 }

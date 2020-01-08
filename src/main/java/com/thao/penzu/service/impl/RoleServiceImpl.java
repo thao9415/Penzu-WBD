@@ -15,6 +15,6 @@ public class RoleServiceImpl implements IRoleService {
     private IRoleRepository roleRepository;
     @Override
     public Optional<Role> findByName(RoleName roleName) {
-        return roleRepository.findByRoleName(roleName);
+        return roleRepository.findByName(roleName);
     }
 }

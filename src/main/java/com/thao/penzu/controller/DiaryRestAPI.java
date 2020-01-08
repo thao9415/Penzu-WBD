@@ -67,7 +67,9 @@ public class DiaryRestAPI {
         if (!diary1.isPresent()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        diary1.get().setDate(diary.getDate());
+        LocalDateTime now = LocalDateTime.now();
+
+        diary1.get().setDate(now);
         diary1.get().setContent(diary.getContent());
         diary1.get().setTitle(diary.getTitle());
         diary1.get().setTag(diary.getTag());
