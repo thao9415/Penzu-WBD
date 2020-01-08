@@ -1,15 +1,18 @@
 package com.thao.penzu.controller;
 
 import com.thao.penzu.message.request.LoginForm;
+import com.thao.penzu.message.request.PasswordForm;
 import com.thao.penzu.message.request.SignUpForm;
+import com.thao.penzu.message.request.UserForm;
 import com.thao.penzu.message.response.JwtResponse;
 import com.thao.penzu.message.response.ResponseMessage;
 import com.thao.penzu.model.Role;
 import com.thao.penzu.model.RoleName;
 import com.thao.penzu.model.User;
-import com.thao.penzu.repository.IRoleRepository;
-import com.thao.penzu.repository.IUserRepository;
 import com.thao.penzu.security.jwt.JwtProvider;
+import com.thao.penzu.security.service.UserPrinciple;
+import com.thao.penzu.service.IRoleService;
+import com.thao.penzu.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +20,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @CrossOrigin(origins = "*")
@@ -33,10 +36,10 @@ public class AuthRestAPI {
     AuthenticationManager authenticationManager;
 
     @Autowired
-    IUserRepository userRepository;
+    IUserService userService;
 
     @Autowired
-    IRoleRepository roleRepository;
+    IRoleService roleService;
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -53,20 +56,23 @@ public class AuthRestAPI {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String jwt = jwtProvider.generateJwtToken(authentication);
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        UserPrinciple userDetails = (UserPrinciple) authentication.getPrincipal();
 
-        return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getUsername(), userDetails.getAuthorities()));
+        return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getUsername(),
+                userDetails.getId() , userDetails.getName(), userDetails.getEmail(), userDetails.getAvatar() ,
+                userDetails.getAuthorities()
+        ));
     }
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignUpForm signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            return new ResponseEntity<>(new ResponseMessage("Tên đăng nhập đã được sử dụng"),
+        if (userService.existsByUsername(signUpRequest.getUsername())) {
+            return new ResponseEntity<>(new ResponseMessage("Fail -> Username is already taken!"),
                     HttpStatus.BAD_REQUEST);
         }
 
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return new ResponseEntity<>(new ResponseMessage("Email đã được sử dụng"),
+        if (userService.existsByEmail(signUpRequest.getEmail())) {
+            return new ResponseEntity<>(new ResponseMessage("Fail -> Email is already in use!"),
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -80,27 +86,69 @@ public class AuthRestAPI {
         strRoles.forEach(role -> {
             switch (role) {
                 case "admin":
-                    Role adminRole = roleRepository.findByRoleName(RoleName.ROLE_ADMIN)
+                    Role adminRole = roleService.findByName(RoleName.ROLE_ADMIN)
                             .orElseThrow(() -> new RuntimeException("Fail! -> Cause: User Role not find."));
                     roles.add(adminRole);
 
                     break;
                 case "pm":
-                    Role pmRole = roleRepository.findByRoleName(RoleName.ROLE_PM)
+                    Role pmRole = roleService.findByName(RoleName.ROLE_PM)
                             .orElseThrow(() -> new RuntimeException("Fail! -> Cause: User Role not find."));
                     roles.add(pmRole);
 
                     break;
                 default:
-                    Role userRole = roleRepository.findByRoleName(RoleName.ROLE_USER)
+                    Role userRole = roleService.findByName(RoleName.ROLE_USER)
                             .orElseThrow(() -> new RuntimeException("Fail! -> Cause: User Role not find."));
                     roles.add(userRole);
             }
         });
 
         user.setRoles(roles);
-        userRepository.save(user);
+        userService.save(user);
 
         return new ResponseEntity<>(new ResponseMessage("User registered successfully!"), HttpStatus.OK);
+    }
+
+    @PutMapping("/update-profile/{id}")
+    public ResponseEntity<?> updateUser(@Valid @RequestBody UserForm userForm, @PathVariable Long id) {
+        Optional<User> user = userService.findById(id);
+
+        if(user == null) {
+            return new ResponseEntity<>("Can't Find User By Id" + id, HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            user.get().setName(userForm.getName());
+
+            userService.save(user.get());
+
+            return new ResponseEntity<>(new ResponseMessage("Update successful"), HttpStatus.OK);
+        } catch (Exception e ) {
+            throw new RuntimeException("Fail!");
+        }
+    }
+
+
+    @PutMapping("/update-password/{id}")
+    public ResponseEntity<?>updatePassword(@Valid @RequestBody PasswordForm passForm, @PathVariable Long id) {
+        Optional<User> user = userService.findById(id);
+
+        if (user == null ){
+            return new ResponseEntity<>(new ResponseMessage("Not found user"),HttpStatus.NOT_FOUND);
+        }
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(passForm.getUsername(), passForm.getCurrentPassword()));
+
+            user.get().setPassword(passwordEncoder.encode(passForm.getNewPassword()));
+
+            userService.save(user.get());
+
+            return new ResponseEntity<>(new ResponseMessage("Change password successful"),HttpStatus.OK);
+        } catch (Exception e) {
+            throw new RuntimeException("Fail!");
+        }
     }
 }
